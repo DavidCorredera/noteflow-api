@@ -11,9 +11,21 @@ const noteSchema = z.object({
 
 export async function GET() {
   try {
-    const notes = await query('SELECT * FROM notes ORDER BY created_at DESC');
+    const notes = await query(`
+      SELECT 
+        n.*,
+        json_agg(ci.*) FILTER (WHERE ci.id IS NOT NULL) as items,
+        json_agg(nt.tag) FILTER (WHERE nt.id IS NOT NULL) as tags
+      FROM notes n
+      LEFT JOIN checklist_items ci ON n.id = ci.note_id
+      LEFT JOIN note_tags nt ON n.id = nt.note_id
+      GROUP BY n.id
+      ORDER BY n.created_at DESC;
+    `);
+    
     return NextResponse.json(notes);
   } catch (error) {
+    console.error("🔥 ERROR EN GET /notes:", error);
     return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
   }
 }
@@ -36,6 +48,7 @@ export async function POST(request: Request) {
     
     return NextResponse.json(note, { status: 201 });
   } catch (error) {
+	console.error("🔥 ERROR AL CREAR NOTA:", error);
     return NextResponse.json({ error: 'Error al crear la nota' }, { status: 500 });
   }
 }

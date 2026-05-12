@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 
-export async function PATCH(request: Request, { params }: { params: { itemId: string } }) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ itemId: string }> }) {
   try {
+    const { itemId } = await params;
     const body = await request.json();
     const { is_completed, text } = body;
 
@@ -11,7 +12,7 @@ export async function PATCH(request: Request, { params }: { params: { itemId: st
        SET is_completed = COALESCE($1, is_completed),
            text = COALESCE($2, text)
        WHERE id = $3 RETURNING *`,
-      [is_completed, text, params.itemId]
+      [is_completed, text, itemId]
     );
 
     if (!updatedItem) return NextResponse.json({ error: 'Item no encontrado' }, { status: 404 });
@@ -21,9 +22,10 @@ export async function PATCH(request: Request, { params }: { params: { itemId: st
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: { itemId: string } }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ itemId: string }> }) {
   try {
-    const [deletedItem] = await query('DELETE FROM checklist_items WHERE id = $1 RETURNING id', [params.itemId]);
+    const { itemId } = await params;
+    const [deletedItem] = await query('DELETE FROM checklist_items WHERE id = $1 RETURNING id', [itemId]);
     if (!deletedItem) return NextResponse.json({ error: 'Item no encontrado' }, { status: 404 });
 
     return new NextResponse(null, { status: 204 });

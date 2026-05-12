@@ -6,17 +6,19 @@ const itemSchema = z.object({
   text: z.string().min(1, "El texto no puede estar vacío")
 });
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const items = await query('SELECT * FROM checklist_items WHERE note_id = $1 ORDER BY id ASC', [params.id]);
+    const { id } = await params;
+    const items = await query('SELECT * FROM checklist_items WHERE note_id = $1 ORDER BY id ASC', [id]);
     return NextResponse.json(items);
   } catch (error) {
     return NextResponse.json({ error: 'Error interno' }, { status: 500 });
   }
 }
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const body = await request.json();
     const result = itemSchema.safeParse(body);
 
@@ -26,7 +28,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
     const [newItem] = await query(
       'INSERT INTO checklist_items (note_id, text) VALUES ($1, $2) RETURNING *',
-      [params.id, result.data.text]
+      [id, result.data.text]
     );
 
     return NextResponse.json(newItem, { status: 201 });
