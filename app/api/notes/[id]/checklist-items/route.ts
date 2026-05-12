@@ -23,7 +23,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const result = itemSchema.safeParse(body);
 
     if (!result.success) {
-      return NextResponse.json({ errors: result.error.errors }, { status: 400 });
+      return NextResponse.json({ errors: result.error.issues }, { status: 400 });
     }
 
     const [newItem] = await query(
