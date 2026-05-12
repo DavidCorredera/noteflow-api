@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     const result = noteSchema.safeParse(body);
     
     if (!result.success) {
-      return NextResponse.json({ errors: result.error.errors }, { status: 400 });
+      return NextResponse.json({ errors: result.error.issues }, { status: 400 });
     }
     
     const { title, type, content, color } = result.data;
