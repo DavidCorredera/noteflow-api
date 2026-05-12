@@ -39,3 +39,14 @@ El sistema consta de 3 tablas principales:
 1. **notes**: Tabla principal. Contiene `id`, `title`, `content`, `type`, `color`, `created_at` y `updated_at`.
 2. **checklist_items**: Relacionada con `notes` (Muchos a Uno) a través de `note_id`. Contiene el estado `is_completed` y el texto.
 3. **note_tags**: Relacionada con `notes` (Muchos a Uno) a través de `note_id`. Contiene el texto del `tag`.
+
+## 6. Consultas Avanzadas: INNER JOIN vs LEFT JOIN
+El verdadero potencial de las bases de datos relacionales emerge al combinar tablas usando JOINs.
+
+
+
+- INNER JOIN: Devuelve únicamente las filas donde hay coincidencias en *ambas* tablas.
+  Ejemplo: Si haces un INNER JOIN entre `notes` y `checklist_items`, las notas que NO tengan items desaparecerán del resultado. ¡No queremos eso!
+
+- LEFT JOIN: Devuelve *todas* las filas de la tabla principal (la de la izquierda), y las coincidencias de la secundaria (la derecha). Si no hay coincidencia, rellena los huecos con valores vacíos (NULL).
+  Ejemplo: Usamos LEFT JOIN para obtener absolutamente todas las notas, y si resulta que tienen items, los adjunta a la respuesta.

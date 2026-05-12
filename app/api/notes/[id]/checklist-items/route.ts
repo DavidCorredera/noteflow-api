@@ -1,0 +1,36 @@
+import { NextResponse } from 'next/server';
+import { query } from '@/lib/db';
+import { z } from 'zod';
+
+const itemSchema = z.object({
+  text: z.string().min(1, "El texto no puede estar vacío")
+});
+
+export async function GET(request: Request, { params }: { params: { id: string } }) {
+  try {
+    const items = await query('SELECT * FROM checklist_items WHERE note_id = $1 ORDER BY id ASC', [params.id]);
+    return NextResponse.json(items);
+  } catch (error) {
+    return NextResponse.json({ error: 'Error interno' }, { status: 500 });
+  }
+}
+
+export async function POST(request: Request, { params }: { params: { id: string } }) {
+  try {
+    const body = await request.json();
+    const result = itemSchema.safeParse(body);
+
+    if (!result.success) {
+      return NextResponse.json({ errors: result.error.errors }, { status: 400 });
+    }
+
+    const [newItem] = await query(
+      'INSERT INTO checklist_items (note_id, text) VALUES ($1, $2) RETURNING *',
+      [params.id, result.data.text]
+    );
+
+    return NextResponse.json(newItem, { status: 201 });
+  } catch (error) {
+    return NextResponse.json({ error: 'Error interno' }, { status: 500 });
+  }
+}
