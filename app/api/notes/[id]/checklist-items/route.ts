@@ -25,7 +25,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     if (!result.success) {
       return NextResponse.json({ errors: result.error.issues }, { status: 400 });
     }
-
+ 
     const [newItem] = await query(
       'INSERT INTO checklist_items (note_id, text) VALUES ($1, $2) RETURNING *',
       [id, result.data.text]
