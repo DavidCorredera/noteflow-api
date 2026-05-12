@@ -1,36 +1,86 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 📝 NoteFlow API
 
-## Getting Started
+NoteFlow API es el motor backend diseñado para gestionar notas, listas de tareas e ideas de forma centralizada. Construido con **Next.js 15**, utiliza una arquitectura de rutas de API modernas y se conecta a una base de datos **PostgreSQL** (vía Neon DB) para ofrecer persistencia de datos escalable y eficiente.
 
-First, run the development server:
+## 🚀 Tecnologías Utilizadas
 
-```bash
+*   **Framework:** [Next.js 15](https://nextjs.org/) (App Router)
+*   **Lenguaje:** [TypeScript](https://www.typescript.org/)
+*   **Base de Datos:** [PostgreSQL](https://www.postgresql.org/) (Alojado en [Neon](https://neon.tech/))
+*   **Validación:** [Zod](https://zod.dev/) (Validación de esquemas con tipado fuerte)
+*   **Despliegue:** [Vercel](https://vercel.com/)
+
+---
+
+## 🛠️ Estructura del Proyecto
+
+```text
+noteflow-api/
+├── app/
+│   └── api/                # Endpoints de la API
+│       ├── notes/          # Gestión global de notas
+│       └── checklist-items/# Gestión de ítems individuales
+├── lib/
+│   └── db.ts               # Configuración de conexión y cliente Neon
+├── sql/
+│   └── schema.sql          # Scripts SQL para creación de tablas
+└── .env.local              # Variables de entorno (DATABASE_URL)
+
+
+📡 Endpoints de la API
+Notas
+GET /api/notes - Obtiene todas las notas incluyendo sus ítems y etiquetas vinculadas mediante JSON Aggregation.
+
+POST /api/notes - Crea una nueva nota (soporta tipos: note, checklist, idea).
+
+PATCH /api/notes/[id] - Actualiza metadatos de una nota existente.
+
+DELETE /api/notes/[id] - Elimina una nota (incluyendo eliminación en cascada si se configuró en SQL).
+
+Checklists & Items
+POST /api/notes/[id]/checklist-items - Añade una nueva subtarea a una nota de tipo checklist.
+
+PATCH /api/checklist-items/[itemId] - Actualiza el estado (is_completed) o texto de un ítem.
+
+DELETE /api/checklist-items/[itemId] - Elimina un ítem específico de la lista.
+
+⚙️ Configuración del Entorno de Desarrollo
+Instalación:
+
+Bash
+npm install
+
+
+2. **Variables de Entorno:**
+   Crea un archivo `.env.local` y añade tu Connection String de Neon:
+   ```env
+   DATABASE_URL="postgresql://user:password@hostname/dbname?sslmode=require"
+   
+Ejecución:
+
+Bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🗄️ Esquema de Base de Datos
 
-## Learn More
+El sistema utiliza tres tablas relacionales para optimizar el almacenamiento:
+- `notes`: Tabla principal con soporte para colores hexadecimales y tipos de nota.
+- `checklist_items`: Relación 1:N con `notes` para las tareas pendientes.
+- `note_tags`: Relación para categorizar ideas mediante etiquetas.
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## ☁️ Despliegue en Producción
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+El proyecto está optimizado para **Vercel**. 
+1. Conecta el repositorio de GitHub a Vercel.
+2. Configura `DATABASE_URL` en las *Environment Variables* del proyecto en Vercel.
+3. El despliegue se realizará automáticamente con cada `push` a la rama `main`.
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 📄 Licencia
+Este proyecto es de uso personal y educativo.
