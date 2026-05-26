@@ -12,7 +12,8 @@ CREATE TABLE checklist_items (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   note_id UUID NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
   text VARCHAR(255) NOT NULL,
-  is_completed BOOLEAN DEFAULT FALSE
+  is_completed BOOLEAN DEFAULT FALSE,
+  priority VARCHAR(10) DEFAULT 'none' CHECK (priority IN ('none', 'low', 'medium', 'high'))
 );
 
 CREATE TABLE note_tags (

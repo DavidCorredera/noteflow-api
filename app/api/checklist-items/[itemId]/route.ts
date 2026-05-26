@@ -1,18 +1,32 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { z } from 'zod';
+
+const patchSchema = z.object({
+  text: z.string().min(1, "El texto no puede estar vacío").optional(),
+  is_completed: z.boolean().optional(),
+  priority: z.enum(["none", "low", "medium", "high"]).optional()
+});
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ itemId: string }> }) {
   try {
     const { itemId } = await params;
     const body = await request.json();
-    const { is_completed, text } = body;
+    const result = patchSchema.safeParse(body);
+
+    if (!result.success) {
+      return NextResponse.json({ errors: result.error.issues }, { status: 400 });
+    }
+
+    const { is_completed, text, priority } = result.data;
 
     const [updatedItem] = await query(
       `UPDATE checklist_items
        SET is_completed = COALESCE($1, is_completed),
-           text = COALESCE($2, text)
-       WHERE id = $3 RETURNING *`,
-      [is_completed, text, itemId]
+           text = COALESCE($2, text),
+           priority = COALESCE($3, priority)
+       WHERE id = $4 RETURNING *`,
+      [is_completed, text, priority, itemId]
     );
 
     if (!updatedItem) return NextResponse.json({ error: 'Item no encontrado' }, { status: 404 });

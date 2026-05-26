@@ -3,7 +3,8 @@ import { query } from '@/lib/db';
 import { z } from 'zod';
 
 const itemSchema = z.object({
-  text: z.string().min(1, "El texto no puede estar vacío")
+  text: z.string().min(1, "El texto no puede estar vacío"),
+  priority: z.enum(["none", "low", "medium", "high"]).optional()
 });
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -27,8 +28,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     }
  
     const [newItem] = await query(
-      'INSERT INTO checklist_items (note_id, text) VALUES ($1, $2) RETURNING *',
-      [id, result.data.text]
+      'INSERT INTO checklist_items (note_id, text, priority) VALUES ($1, $2, $3) RETURNING *',
+      [id, result.data.text, result.data.priority ?? 'none']
     );
 
     return NextResponse.json(newItem, { status: 201 });
