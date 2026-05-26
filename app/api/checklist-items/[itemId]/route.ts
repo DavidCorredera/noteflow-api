@@ -17,19 +17,19 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ it
 
     if (!updatedItem) return NextResponse.json({ error: 'Item no encontrado' }, { status: 404 });
     return NextResponse.json(updatedItem);
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Error interno' }, { status: 500 });
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: Promise<{ itemId: string }> }) {
+export async function DELETE(_request: Request, { params }: { params: Promise<{ itemId: string }> }) {
   try {
     const { itemId } = await params;
     const [deletedItem] = await query('DELETE FROM checklist_items WHERE id = $1 RETURNING id', [itemId]);
     if (!deletedItem) return NextResponse.json({ error: 'Item no encontrado' }, { status: 404 });
 
     return new NextResponse(null, { status: 204 });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Error interno' }, { status: 500 });
   }
 }
