@@ -42,3 +42,7 @@ next-env.d.ts
 
 # Firebase service account (sensitive credentials)
 service-account.json
+
+# temporary migration script (exposed credentials)
+set_default.mjs
+run_migration.mjs
