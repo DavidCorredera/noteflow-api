@@ -33,6 +33,7 @@ export async function POST(request: Request) {
       Key: key,
       Body: buffer,
       ContentType: contentType,
+      ACL: 'public-read',
     }));
 
     const region = process.env.AWS_REGION!;
