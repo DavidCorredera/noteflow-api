@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { verifyAuth } from '@/lib/auth';
-import { z } from 'zod';
 import crypto from 'crypto';
 
 const s3 = new S3Client({
@@ -12,27 +11,22 @@ const s3 = new S3Client({
   },
 });
 
-const uploadSchema = z.object({
-  fileName: z.string().min(1),
-  contentType: z.string().min(1),
-  base64: z.string().min(1),
-});
-
 export async function POST(request: Request) {
   try {
     await verifyAuth(request);
-    const body = await request.json();
-    const result = uploadSchema.safeParse(body);
+    const formData = await request.formData();
+    const file = formData.get('file');
 
-    if (!result.success) {
-      return NextResponse.json({ errors: result.error.issues }, { status: 400 });
+    if (!file || typeof (file as any).arrayBuffer !== 'function') {
+      return NextResponse.json({ error: 'Archivo no encontrado' }, { status: 400 });
     }
 
-    const { fileName, contentType, base64 } = result.data;
-    const ext = fileName.split('.').pop() || 'jpg';
+    const fileObj = file as File;
+    const ext = fileObj.name?.split('.').pop() || 'jpg';
+    const contentType = fileObj.type || 'image/jpeg';
     const key = `uploads/${crypto.randomUUID()}.${ext}`;
 
-    const buffer = Buffer.from(base64, 'base64');
+    const buffer = Buffer.from(await fileObj.arrayBuffer());
 
     await s3.send(new PutObjectCommand({
       Bucket: process.env.AWS_S3_BUCKET!,
