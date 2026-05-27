@@ -48,6 +48,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ publicUrl });
   } catch (error) {
     console.error('ERROR EN UPLOAD:', error);
-    return NextResponse.json({ error: 'Error al subir la imagen' }, { status: 500 });
+    const details = error instanceof Error ? error.message : 'Error desconocido';
+    return NextResponse.json({ error: `Error al subir la imagen: ${details}` }, { status: 500 });
   }
 }
