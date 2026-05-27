@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { verifyAuth } from '@/lib/auth';
 import { z } from 'zod';
 
 const patchSchema = z.object({
@@ -8,9 +9,25 @@ const patchSchema = z.object({
   priority: z.enum(["none", "low", "medium", "high"]).optional()
 });
 
+async function verifyItemOwnership(itemId: string, uid: string): Promise<boolean> {
+  const [item] = await query(
+    `SELECT ci.id FROM checklist_items ci
+     JOIN notes n ON n.id = ci.note_id
+     WHERE ci.id = $1 AND n.user_id = $2`,
+    [itemId, uid]
+  );
+  return !!item;
+}
+
 export async function PATCH(request: Request, { params }: { params: Promise<{ itemId: string }> }) {
   try {
+    const uid = await verifyAuth(request);
     const { itemId } = await params;
+
+    if (!(await verifyItemOwnership(itemId, uid))) {
+      return NextResponse.json({ error: 'Item no encontrado' }, { status: 404 });
+    }
+
     const body = await request.json();
     const result = patchSchema.safeParse(body);
 
@@ -31,19 +48,31 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ it
 
     if (!updatedItem) return NextResponse.json({ error: 'Item no encontrado' }, { status: 404 });
     return NextResponse.json(updatedItem);
-  } catch {
+  } catch (error: any) {
+    if (error.message?.includes('Authorization')) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
     return NextResponse.json({ error: 'Error interno' }, { status: 500 });
   }
 }
 
-export async function DELETE(_request: Request, { params }: { params: Promise<{ itemId: string }> }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ itemId: string }> }) {
   try {
+    const uid = await verifyAuth(request);
     const { itemId } = await params;
+
+    if (!(await verifyItemOwnership(itemId, uid))) {
+      return NextResponse.json({ error: 'Item no encontrado' }, { status: 404 });
+    }
+
     const [deletedItem] = await query('DELETE FROM checklist_items WHERE id = $1 RETURNING id', [itemId]);
     if (!deletedItem) return NextResponse.json({ error: 'Item no encontrado' }, { status: 404 });
 
     return new NextResponse(null, { status: 204 });
-  } catch {
+  } catch (error: any) {
+    if (error.message?.includes('Authorization')) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
     return NextResponse.json({ error: 'Error interno' }, { status: 500 });
   }
 }

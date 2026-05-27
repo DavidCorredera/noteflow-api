@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createNoteWithTags, listNotes } from '@/lib/notes';
+import { verifyAuth } from '@/lib/auth';
 import { z } from 'zod';
 
 const noteSchema = z.object({
@@ -10,12 +11,16 @@ const noteSchema = z.object({
   tags: z.array(z.string()).optional(),
 });
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const notes = await listNotes();
+    const uid = await verifyAuth(request);
+    const notes = await listNotes(uid);
 
     return NextResponse.json(notes);
-  } catch (error) {
+  } catch (error: any) {
+    if (error.message?.includes('Authorization')) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
     console.error('ERROR EN GET /notes:', error);
     return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
   }
@@ -23,6 +28,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const uid = await verifyAuth(request);
     const body = await request.json();
     const result = noteSchema.safeParse(body);
 
@@ -30,10 +36,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ errors: result.error.issues }, { status: 400 });
     }
 
-    const note = await createNoteWithTags(result.data);
+    const note = await createNoteWithTags({ ...result.data, userId: uid });
 
     return NextResponse.json(note, { status: 201 });
-  } catch (error) {
+  } catch (error: any) {
+    if (error.message?.includes('Authorization')) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
     console.error('ERROR AL CREAR NOTA:', error);
     return NextResponse.json({ error: 'Error al crear la nota' }, { status: 500 });
   }
