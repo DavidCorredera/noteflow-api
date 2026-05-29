@@ -9,6 +9,7 @@ const notePatchSchema = z.object({
   content: z.string().optional(),
   color: z.string().optional(),
   tags: z.array(z.string()).optional(),
+  folderId: z.string().uuid().nullable().optional(),
 });
 
 function unauthorized() {
@@ -43,7 +44,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       return NextResponse.json({ errors: result.error.issues }, { status: 400 });
     }
 
-    const updatedNote = await updateNoteWithTags(id, result.data);
+    const updatedNote = await updateNoteWithTags(id, { ...result.data, folder_id: result.data.folderId === undefined ? undefined : result.data.folderId });
     if (!updatedNote) return NextResponse.json({ error: 'Nota no encontrada' }, { status: 404 });
     return NextResponse.json(updatedNote);
   } catch (error: any) {

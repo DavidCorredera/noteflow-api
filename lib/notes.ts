@@ -8,6 +8,7 @@ type NoteWriteInput = {
   content?: string;
   color?: string;
   tags?: string[];
+  folder_id?: string;
 };
 
 type NoteUpdateInput = {
@@ -15,6 +16,7 @@ type NoteUpdateInput = {
   content?: string;
   color?: string;
   tags?: string[];
+  folder_id?: string | null;
 };
 
 const NOTE_WITH_RELATIONS_SELECT = `
@@ -68,8 +70,8 @@ export async function createNoteWithTags(input: NoteWriteInput & { userId: strin
 
   await sql.transaction([
     sql.query(
-      'INSERT INTO notes (id, title, type, content, color, user_id) VALUES ($1, $2, $3, $4, $5, $6)',
-      [noteId, input.title, input.type, input.content ?? null, input.color ?? null, input.userId]
+      'INSERT INTO notes (id, title, type, content, color, user_id, folder_id) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+      [noteId, input.title, input.type, input.content ?? null, input.color ?? null, input.userId, input.folder_id ?? null]
     ),
     ...tags.map((tag) =>
       sql.query('INSERT INTO note_tags (note_id, tag) VALUES ($1, $2)', [noteId, tag])
@@ -81,16 +83,25 @@ export async function createNoteWithTags(input: NoteWriteInput & { userId: strin
 
 export async function updateNoteWithTags(id: string, input: NoteUpdateInput) {
   const tags = input.tags === undefined ? undefined : normalizeTags(input.tags);
+
+  const setClauses: string[] = [];
+  const values: unknown[] = [];
+  let idx = 1;
+
+  if (input.title !== undefined) { setClauses.push(`title = $${idx++}`); values.push(input.title); }
+  if (input.content !== undefined) { setClauses.push(`content = $${idx++}`); values.push(input.content); }
+  if (input.color !== undefined) { setClauses.push(`color = $${idx++}`); values.push(input.color); }
+  if ('folder_id' in input) { setClauses.push(`folder_id = $${idx++}`); values.push(input.folder_id ?? null); }
+
+  if (setClauses.length === 0 && tags === undefined) return getNoteById(id);
+
+  setClauses.push('updated_at = NOW()');
+  values.push(id);
+
   const [updatedRows] = await sql.transaction([
     sql.query(
-      `UPDATE notes
-       SET title = COALESCE($1, title),
-           content = COALESCE($2, content),
-           color = COALESCE($3, color),
-           updated_at = NOW()
-       WHERE id = $4
-       RETURNING id`,
-      [input.title, input.content, input.color, id]
+      `UPDATE notes SET ${setClauses.join(', ')} WHERE id = $${idx} RETURNING id`,
+      [...values]
     ),
     ...(tags === undefined
       ? []

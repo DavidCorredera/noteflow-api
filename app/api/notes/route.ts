@@ -9,6 +9,7 @@ const noteSchema = z.object({
   content: z.string().optional(),
   color: z.string().optional(),
   tags: z.array(z.string()).optional(),
+  folderId: z.string().uuid().nullable().optional(),
 });
 
 export async function GET(request: Request) {
@@ -36,7 +37,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ errors: result.error.issues }, { status: 400 });
     }
 
-    const note = await createNoteWithTags({ ...result.data, userId: uid });
+    const note = await createNoteWithTags({ ...result.data, folder_id: result.data.folderId ?? undefined, userId: uid });
 
     return NextResponse.json(note, { status: 201 });
   } catch (error: any) {
