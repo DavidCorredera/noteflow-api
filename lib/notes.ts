@@ -22,23 +22,19 @@ type NoteUpdateInput = {
 const NOTE_WITH_RELATIONS_SELECT = `
   SELECT
     n.*,
-    COALESCE(
-      (
-        SELECT json_agg(ci ORDER BY ci.id)
-        FROM checklist_items ci
-        WHERE ci.note_id = n.id
-      ),
-      '[]'::json
-    ) AS items,
-    COALESCE(
-      (
-        SELECT json_agg(nt.tag ORDER BY nt.tag)
-        FROM note_tags nt
-        WHERE nt.note_id = n.id
-      ),
-      '[]'::json
-    ) AS tags
+    COALESCE(items.data, '[]'::json) AS items,
+    COALESCE(tags.data, '[]'::json) AS tags
   FROM notes n
+  LEFT JOIN (
+    SELECT note_id, json_agg(ci ORDER BY ci.id) as data
+    FROM checklist_items ci
+    GROUP BY note_id
+  ) items ON items.note_id = n.id
+  LEFT JOIN (
+    SELECT note_id, json_agg(nt.tag ORDER BY nt.tag) as data
+    FROM note_tags nt
+    GROUP BY note_id
+  ) tags ON tags.note_id = n.id
 `;
 
 export function normalizeTags(tags?: string[]) {
@@ -73,9 +69,7 @@ export async function createNoteWithTags(input: NoteWriteInput & { userId: strin
       'INSERT INTO notes (id, title, type, content, color, user_id, folder_id) VALUES ($1, $2, $3, $4, $5, $6, $7)',
       [noteId, input.title, input.type, input.content ?? null, input.color ?? null, input.userId, input.folder_id ?? null]
     ),
-    ...tags.map((tag) =>
-      sql.query('INSERT INTO note_tags (note_id, tag) VALUES ($1, $2)', [noteId, tag])
-    ),
+    sql.query('INSERT INTO note_tags (note_id, tag) SELECT $1, unnest($2::text[])', [noteId, tags]),
   ]);
 
   return getNoteById(noteId);
@@ -107,14 +101,12 @@ export async function updateNoteWithTags(id: string, input: NoteUpdateInput) {
       ? []
       : [
           sql.query('DELETE FROM note_tags WHERE note_id = $1', [id]),
-          ...tags.map((tag) =>
-            sql.query(
-              `INSERT INTO note_tags (note_id, tag)
-               SELECT $1, $2
-               WHERE EXISTS (SELECT 1 FROM notes WHERE id = $1)`,
-              [id, tag]
-            )
-          ),
+             sql.query(
+               `INSERT INTO note_tags (note_id, tag)
+                SELECT $1, unnest($2::text[])
+                WHERE EXISTS (SELECT 1 FROM notes WHERE id = $1)`,
+               [id, tags]
+             ),
         ]),
   ]);
 

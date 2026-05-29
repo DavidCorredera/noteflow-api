@@ -2,6 +2,10 @@ import admin from 'firebase-admin';
 
 const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
 
+// Simple in-memory cache for verified tokens
+const tokenCache = new Map<string, { uid: string; expiresAt: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 function getApp() {
   if (admin.apps.length) return admin.app();
 
@@ -24,6 +28,20 @@ export async function verifyAuth(request: Request): Promise<string> {
   }
 
   const token = authHeader.slice(7);
+
+  // Check cache first
+  const cached = tokenCache.get(token);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.uid;
+  }
+
   const decoded = await getApp().auth().verifyIdToken(token);
+  
+  // Store in cache
+  tokenCache.set(token, { 
+    uid: decoded.uid, 
+    expiresAt: Date.now() + CACHE_TTL 
+  });
+
   return decoded.uid;
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { verifyAuth } from '@/lib/auth';
 import crypto from 'crypto';
 
@@ -14,35 +15,31 @@ const s3 = new S3Client({
 export async function POST(request: Request) {
   try {
     await verifyAuth(request);
-    const formData = await request.formData();
-    const file = formData.get('file');
+    const body = await request.json();
+    const { fileName, contentType } = body;
 
-    if (!file || typeof (file as any).arrayBuffer !== 'function') {
-      return NextResponse.json({ error: 'Archivo no encontrado' }, { status: 400 });
+    if (!fileName || !contentType) {
+      return NextResponse.json({ error: 'Nombre de archivo y tipo de contenido son requeridos' }, { status: 400 });
     }
 
-    const fileObj = file as File;
-    const ext = fileObj.name?.split('.').pop() || 'jpg';
-    const contentType = fileObj.type || 'image/jpeg';
+    const ext = fileName.split('.').pop() || 'jpg';
     const key = `uploads/${crypto.randomUUID()}.${ext}`;
 
-    const buffer = Buffer.from(await fileObj.arrayBuffer());
-
-    await s3.send(new PutObjectCommand({
+    const command = new PutObjectCommand({
       Bucket: process.env.AWS_S3_BUCKET!,
       Key: key,
-      Body: buffer,
       ContentType: contentType,
-    }));
+    });
 
+    const uploadUrl = await getSignedUrl(s3, command, { expiresIn: 3600 });
     const region = process.env.AWS_REGION!;
     const bucket = process.env.AWS_S3_BUCKET!;
     const publicUrl = `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
 
-    return NextResponse.json({ publicUrl });
+    return NextResponse.json({ uploadUrl, publicUrl });
   } catch (error) {
-    console.error('ERROR EN UPLOAD:', error);
+    console.error('ERROR EN UPLOAD URL:', error);
     const details = error instanceof Error ? error.message : 'Error desconocido';
-    return NextResponse.json({ error: `Error al subir la imagen: ${details}` }, { status: 500 });
+    return NextResponse.json({ error: `Error al generar URL de subida: ${details}` }, { status: 500 });
   }
 }
